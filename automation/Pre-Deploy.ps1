@@ -2,7 +2,8 @@
 param (
     [Parameter(Mandatory = $true)]
     [string]
-    $resourceGroupName
+    $resourceGroupName,
+    $location = "West Europe"
 )
 
 try {
@@ -63,3 +64,5 @@ try {
 catch {
     Write-Host "Skipping storage role clearup"
 }
+
+New-AzResourceGroup -Name $resourceGroupName -Location $location -Force
