@@ -10,8 +10,8 @@ jobs:
   # Job to set up Azure environment
   setup-azure-env:
     env:
-      RESOURCE_GROUP_NAME: vmss303-resources
-      SCALESET_NAME_PREFIX: vmss303
+      RESOURCE_GROUP_NAME: tripplanner-staging-resources
+      SCALESET_NAME_PREFIX: tpstag101
       SCALESET_DEFAULT_VMCOUNT: 2
       SCALESET_MAX_VMCOUNT: 150
     # The type of runner that the job will run on
