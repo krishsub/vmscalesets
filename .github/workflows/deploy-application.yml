@@ -10,7 +10,7 @@ jobs:
   # Job to set up Azure environment
   setup-azure-env:
     env:
-      RESOURCE_GROUP_NAME: vmss303-resources
+      RESOURCE_GROUP_NAME: tripplanner-staging-resources
       RELEASE_FOLDER_NAME: 1.234
       BLOB_CONTAINER_NAME: appcontainer
     # The type of runner that the job will run on
