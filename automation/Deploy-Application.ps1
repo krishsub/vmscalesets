@@ -44,7 +44,7 @@ if ($inactiveAutoScaleProfile -and $activeAutoScaleProfile -and $storageAccount 
         Write-Output "Removed extension from $($inactiveVmss.Name)"
     }
     catch {
-        Write-Host "No extension found with name $extensionName, will continue"
+        Write-Output "No extension found with name $extensionName, will continue"
     }
     # Files to downloaded to VMSS, note that when using folders, the file name should be qualified in "commandToExecute"
     $settings = @{
@@ -83,25 +83,50 @@ if ($inactiveAutoScaleProfile -and $activeAutoScaleProfile -and $storageAccount 
     # Prevent auto-scale from doing anything till the new version is handling load
     Remove-AzAutoscaleSetting -ResourceGroupName $ResourceGroupName -Name $inactiveAutoScaleProfile.Name | Out-Null
     Remove-AzAutoscaleSetting -ResourceGroupName $ResourceGroupName -Name $activeAutoScaleProfile.Name | Out-Null
+    
+    try {
+        # Scale-out new version to old version's capacity 
+        Write-Output "Scaling-out $($inactiveVmss.Name) from 0 to $($activeVmss.Sku.Capacity)"
+        $inactiveVmss.Sku.Capacity = $activeVmss.Sku.Capacity
+        # below can throw an exception if the script extension failed
+        $inactiveVmss | Update-AzVmss | Out-Null  
+        Write-Output "Scale-out $($inactiveVmss.Name) completed"
         
-    # Scale-out new version to old version's capacity 
-    Write-Output "Scaling-out $($inactiveVmss.Name) from 0 to $($activeVmss.Sku.Capacity)"
-    $inactiveVmss.Sku.Capacity = $activeVmss.Sku.Capacity
-    $inactiveVmss | Update-AzVmss | Out-Null 
-    Write-Output "Scale-out $($inactiveVmss.Name) completed"
-        
-    # Scale in the active VMSS (old app version) to 0
-    Write-Output "Scaling-in $($activeVmss.Name) from $($activeVmss.Sku.Capacity) to 0"
-    $activeVmss.Sku.Capacity = 0
-    $activeVmss | Update-AzVmss | Out-Null
-    Write-Output "Scale-in $($activeVmss.Name) completed"
+        # Scale in the active VMSS (old app version) to 0
+        Write-Output "Scaling-in $($activeVmss.Name) from $($activeVmss.Sku.Capacity) to 0"
+        $activeVmss.Sku.Capacity = 0
+        $activeVmss | Update-AzVmss | Out-Null
+        Write-Output "Scale-in $($activeVmss.Name) completed"
 
-    # Swap autoscale profiles between active & inactive VMSS
-    $inactiveAutoScaleProfile.Profiles[0].Capacity, $activeAutoScaleProfile.Profiles[0].Capacity = $activeAutoScaleProfile.Profiles[0].Capacity, $inactiveAutoScaleProfile.Profiles[0].Capacity
-    $inactiveAutoScaleProfile | Add-AzAutoscaleSetting | Out-Null
-    $activeAutoScaleProfile | Add-AzAutoscaleSetting | Out-Null
+        # Swap autoscale profiles between active & inactive VMSS
+        $inactiveAutoScaleProfile.Profiles[0].Capacity, $activeAutoScaleProfile.Profiles[0].Capacity = $activeAutoScaleProfile.Profiles[0].Capacity, $inactiveAutoScaleProfile.Profiles[0].Capacity
+        $inactiveAutoScaleProfile | Add-AzAutoscaleSetting | Out-Null
+        $activeAutoScaleProfile | Add-AzAutoscaleSetting | Out-Null
         
-    Write-Output "################## Done scale swap ##################"
+        Write-Output "################## Done scale swap ##################"
+    }
+    catch {
+        # Updating inactive VMSS threw an error, rollback to old state
+
+        Write-Error "################## Error - rolling back changes ##################"
+
+        # First remove the extension
+        Remove-AzVmssExtension -VirtualMachineScaleSet $inactiveVmss -Name $extensionName | Out-Null
+        $inactiveVmss | Update-AzVmss | Out-Null
+        Write-Error "Removed extension from $($inactiveVmss.Name)"
+
+        # Then set the capacity back to 0
+        $inactiveVmss.Sku.Capacity = 0
+        $inactiveVmss | Update-AzVmss | Out-Null
+        Write-Error "Reset VMSS instance count back to 0"
+
+        # Set the autoscale settings
+        $inactiveAutoScaleProfile | Add-AzAutoscaleSetting | Out-Null
+        $activeAutoScaleProfile | Add-AzAutoscaleSetting | Out-Null
+        Write-Error "Restored autoscale settings"
+
+        Write-Error "################## Error - completed roll back changes ##################"
+    }
 }
 else {
     Write-Error "Blue/Green VMSS doesn't seem to be a consistent state that permits upgrading."

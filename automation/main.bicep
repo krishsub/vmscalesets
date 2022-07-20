@@ -1,6 +1,7 @@
 @minLength(1)
 @maxLength(10)
 param scaleSetNamePrefix string
+param location string = resourceGroup().location
 param vmPrefix string = 'vm'
 param vmSku string = 'Standard_D4ds_v4'
 param adminUsername string = 'azureuser'
@@ -69,7 +70,7 @@ var storageBlobPrivateDnsZoneGroup = '${storagePrivateLinkEndpointName}-privated
 
 resource networkSecurityGroup 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
   name: nsgName
-  location: resourceGroup().location
+  location: location
   properties: {
     securityRules: [
       {
@@ -148,7 +149,7 @@ resource networkSecurityGroup 'Microsoft.Network/networkSecurityGroups@2021-02-0
 
 resource virtualNetwork 'Microsoft.Network/virtualNetworks@2021-02-01' = {
   name: vnetName
-  location: resourceGroup().location
+  location: location
   properties: {
     addressSpace: {
       addressPrefixes: [
@@ -196,7 +197,7 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2021-02-01' = {
 
 resource loadBalancer 'Microsoft.Network/loadBalancers@2021-02-01' = {
   name: lbName
-  location: resourceGroup().location
+  location: location
   sku: {
     name: 'Standard'
     tier: 'Regional'
@@ -260,7 +261,7 @@ resource loadBalancer 'Microsoft.Network/loadBalancers@2021-02-01' = {
 
 resource vmArray 'Microsoft.Compute/virtualMachines@2021-04-01' = [for colorItem in colorArray: {
   name: colorItem == color.blue ? vmName.blue : vmName.green
-  location: resourceGroup().location
+  location: location
   identity: {
     type: 'SystemAssigned'
   }
@@ -297,7 +298,7 @@ resource vmArray 'Microsoft.Compute/virtualMachines@2021-04-01' = [for colorItem
 
 resource vmNetworkInterfaceArray 'Microsoft.Network/networkInterfaces@2021-02-01' = [for colorItem in colorArray: {
   name: colorItem == color.blue ? '${vmName.blue}-nic' : '${vmName.green}-nic'
-  location: resourceGroup().location
+  location: location
   properties: {
     enableAcceleratedNetworking: true
     ipConfigurations: [
@@ -316,7 +317,7 @@ resource vmNetworkInterfaceArray 'Microsoft.Network/networkInterfaces@2021-02-01
 
 resource scaleSetArray 'Microsoft.Compute/virtualMachineScaleSets@2021-04-01' = [for colorItem in colorArray: {
   name: colorItem == color.blue ? scaleSetName.blue : scaleSetName.green
-  location: resourceGroup().location
+  location: location
   sku: {
     name: vmSku
   }
@@ -443,7 +444,7 @@ resource scaleSetArray 'Microsoft.Compute/virtualMachineScaleSets@2021-04-01' = 
 
 resource bastionPublicIp 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
   name: bastionPipName
-  location: resourceGroup().location
+  location: location
   sku: {
     name: 'Standard'
     tier: 'Regional'
@@ -460,7 +461,7 @@ resource bastionPublicIp 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
 
 resource bastion 'Microsoft.Network/bastionHosts@2021-02-01' = {
   name: bastionName
-  location: resourceGroup().location
+  location: location
   sku: {
     name: 'Standard'
   }
@@ -483,7 +484,7 @@ resource bastion 'Microsoft.Network/bastionHosts@2021-02-01' = {
 
 resource natGatewayPublicIp 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
   name: natGatewayPipName
-  location: resourceGroup().location
+  location: location
   sku: {
     name: 'Standard'
     tier: 'Regional'
@@ -500,7 +501,7 @@ resource natGatewayPublicIp 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
 
 resource natGateway 'Microsoft.Network/natGateways@2021-02-01' = {
   name: natGatewayName
-  location: resourceGroup().location
+  location: location
   sku: {
     name: 'Standard'
   }
@@ -515,7 +516,7 @@ resource natGateway 'Microsoft.Network/natGateways@2021-02-01' = {
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2021-06-01' = {
   name: logAnalyticsName
-  location: resourceGroup().location
+  location: location
   properties: {
     sku: {
       name: 'PerGB2018'
@@ -525,7 +526,7 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2021-06-01' = {
 
 resource vmInsightsSolution 'Microsoft.OperationsManagement/solutions@2015-11-01-preview' = {
   name: 'VMInsights(${logAnalyticsName})'
-  location: resourceGroup().location
+  location: location
   properties: {
     workspaceResourceId: logAnalytics.id
   }
@@ -539,7 +540,7 @@ resource vmInsightsSolution 'Microsoft.OperationsManagement/solutions@2015-11-01
 
 resource blobStorage 'Microsoft.Storage/storageAccounts@2021-04-01' = {
   name: storageAccountName
-  location: resourceGroup().location
+  location: location
   sku: {
     name: 'Premium_ZRS'
   }
@@ -604,7 +605,7 @@ resource blobCorePrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' =
 
 resource blobStoragePrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-02-01' = {
   name: storagePrivateLinkEndpointName
-  location: resourceGroup().location
+  location: location
   properties: {
     subnet: {
       id: virtualNetwork.properties.subnets[2].id
@@ -638,7 +639,7 @@ resource blobStoragePrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-02-
 
 resource cpuBasedAutoscaleArray 'Microsoft.Insights/autoscalesettings@2015-04-01' = [for colorItem in colorArray: {
   name: colorItem == color.blue ? 'cpuBasedAutoScale-${scaleSetName.blue}' : 'cpuBasedAutoScale-${scaleSetName.green}'
-  location: resourceGroup().location
+  location: location
   properties: {
     enabled: true
     targetResourceUri: contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].id : scaleSetArray[1].id
