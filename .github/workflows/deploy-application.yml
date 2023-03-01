@@ -23,7 +23,7 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Azure Login
-        uses: Azure/login@v1.1
+        uses: Azure/login@v1.4.6
         with:
           # Paste output of `az ad sp create-for-rbac` as value of secret variable: AZURE_CREDENTIALS
           creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -31,7 +31,7 @@ jobs:
           enable-AzPSSession: true
   
       - name: Azure PowerShell App Deploy Action 
-        uses: Azure/powershell@v1
+        uses: Azure/powershell@v1.2.0
         with:
           # Specify the Az PowerShell script here.
           inlineScript:
