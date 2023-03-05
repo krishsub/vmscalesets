@@ -259,8 +259,8 @@ resource loadBalancer 'Microsoft.Network/loadBalancers@2022-07-01' = {
   }
 }
 
-resource vmArray 'Microsoft.Compute/virtualMachines@2022-11-01' = [for colorItem in colorArray: {
-  name: colorItem == color.blue ? vmName.blue : vmName.green
+resource vmArray 'Microsoft.Compute/virtualMachines@2022-11-01' = [for (colorItem, index) in colorArray: {
+  name: vmName[colorItem]
   location: location
   identity: {
     type: 'SystemAssigned'
@@ -270,7 +270,7 @@ resource vmArray 'Microsoft.Compute/virtualMachines@2022-11-01' = [for colorItem
       vmSize: vmSku
     }
     osProfile: {
-      computerName: colorItem == color.blue ? vmName.blue : vmName.green
+      computerName: vmName[colorItem]
       adminUsername: adminUsername
       adminPassword: adminPassword
     }
@@ -289,21 +289,21 @@ resource vmArray 'Microsoft.Compute/virtualMachines@2022-11-01' = [for colorItem
     networkProfile: {
       networkInterfaces: [
         {
-          id: contains(vmNetworkInterfaceArray[0].name, colorItem) ? vmNetworkInterfaceArray[0].id : vmNetworkInterfaceArray[1].id
+          id: vmNetworkInterfaceArray[index].id
         }
       ]
     }
   }
 }]
 
-resource vmNetworkInterfaceArray 'Microsoft.Network/networkInterfaces@2022-07-01' = [for colorItem in colorArray: {
-  name: colorItem == color.blue ? '${vmName.blue}-nic' : '${vmName.green}-nic'
+resource vmNetworkInterfaceArray 'Microsoft.Network/networkInterfaces@2022-07-01' = [for (colorItem, index) in colorArray: {
+  name: '${vmName[colorItem]}-nic'
   location: location
   properties: {
     enableAcceleratedNetworking: true
     ipConfigurations: [
       {
-        name: colorItem == color.blue ? '${vmName.blue}-nic-ipconfig' : '${vmName.green}-nic-ipconfig'
+        name: '${vmName[colorItem]}-nic-ipconfig'
         properties: {
           privateIPAllocationMethod: 'Dynamic'
           subnet: {
@@ -315,8 +315,8 @@ resource vmNetworkInterfaceArray 'Microsoft.Network/networkInterfaces@2022-07-01
   }
 }]
 
-resource scaleSetArray 'Microsoft.Compute/virtualMachineScaleSets@2022-11-01' = [for colorItem in colorArray: {
-  name: colorItem == color.blue ? scaleSetName.blue : scaleSetName.green
+resource scaleSetArray 'Microsoft.Compute/virtualMachineScaleSets@2022-11-01' = [for (colorItem, index) in colorArray: {
+  name: scaleSetName[colorItem]
   location: location
   sku: {
     name: vmSku
@@ -558,6 +558,12 @@ resource storageBlobDataContributorRoleDef 'Microsoft.Authorization/roleDefiniti
   name: 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
 }
 
+@description('This is the built-in Reader role. See https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#reader')
+resource readerRoleDef 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: subscription()
+  name: 'acdd72a7-3385-48ef-bd42-f606fba81ae7'
+}
+
 resource scaleSetToBlobDataContributorAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for (colorItem, index) in colorArray: {
   name: guid(resourceGroup().id, scaleSetArray[index].id, blobStorage.id, storageBlobDataContributorRoleDef.id)
   scope: blobStorage
@@ -570,32 +576,41 @@ resource scaleSetToBlobDataContributorAssignments 'Microsoft.Authorization/roleA
   ]
 }]
 
-// resource scaleSetToStorageReaderRoleAssignments 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = [for colorItem in colorArray: {
-//   name: guid('acdd72a7-3385-48ef-bd42-f606fba81ae7', blobStorage.id, contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].id : scaleSetArray[1].id)
-//   scope: blobStorage
-//   properties: {
-//     principalId: contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].identity.principalId : scaleSetArray[1].identity.principalId
-//     roleDefinitionId: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7'
-//   }
-// }]
+resource scaleSetToStorageReaderAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for (colorItem, index) in colorArray: {
+  name: guid(resourceGroup().id, scaleSetArray[index].id, blobStorage.id, readerRoleDef.id)
+  scope: blobStorage
+  properties: {
+    principalId: scaleSetArray[index].identity.principalId
+    roleDefinitionId: readerRoleDef.id
+  }
+  dependsOn: [
+    scaleSetArray
+  ]
+}]
 
-// resource vmToStorageRoleAssignments 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = [for colorItem in colorArray: {
-//   name: guid(blobStorage.id, contains(vmArray[0].name, colorItem) ? vmArray[0].id : vmArray[1].id)
-//   scope: blobStorage
-//   properties: {
-//     principalId: contains(vmArray[0].name, colorItem) ? vmArray[0].identity.principalId : vmArray[1].identity.principalId
-//     roleDefinitionId: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/ba92f5b4-2d11-453d-a403-e96b0029c9fe'
-//   }
-// }]
+resource vmToBlobDataContributorAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for (colorItem, index) in colorArray: {
+  name: guid(resourceGroup().id, vmArray[index].id, blobStorage.id, storageBlobDataContributorRoleDef.id)
+  scope: blobStorage
+  properties: {
+    principalId: vmArray[index].identity.principalId
+    roleDefinitionId: storageBlobDataContributorRoleDef.id
+  }
+  dependsOn: [
+    vmArray
+  ]
+}]
 
-// resource vmToScaleSetRoleAssignments 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = [for colorItem in colorArray: {
-//   name: guid(contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].id : scaleSetArray[1].id, contains(vmArray[0].name, colorItem) ? vmArray[0].id : vmArray[1].id)
-//   scope: contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0] : scaleSetArray[1]
-//   properties: {
-//     principalId: contains(vmArray[0].name, colorItem) ? vmArray[0].identity.principalId : vmArray[1].identity.principalId
-//     roleDefinitionId: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7'
-//   }
-// }]
+resource vmToStorageReaderAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for (colorItem, index) in colorArray: {
+  name: guid(resourceGroup().id, vmArray[index].id, blobStorage.id, readerRoleDef.id)
+  scope: blobStorage
+  properties: {
+    principalId: vmArray[index].identity.principalId
+    roleDefinitionId: readerRoleDef.id
+  }
+  dependsOn: [
+    vmArray
+  ]
+}]
 
 resource blobCorePrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: privateLinkBlobStorage
@@ -646,12 +661,12 @@ resource blobStoragePrivateEndpoint 'Microsoft.Network/privateEndpoints@2022-07-
   }
 }
 
-resource cpuBasedAutoscaleArray 'Microsoft.Insights/autoscalesettings@2022-10-01' = [for colorItem in colorArray: {
+resource cpuBasedAutoscaleArray 'Microsoft.Insights/autoscalesettings@2022-10-01' = [for (colorItem, index) in colorArray: {
   name: colorItem == color.blue ? 'cpuBasedAutoScale-${scaleSetName.blue}' : 'cpuBasedAutoScale-${scaleSetName.green}'
   location: location
   properties: {
     enabled: true
-    targetResourceUri: contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].id : scaleSetArray[1].id
+    targetResourceUri: scaleSetArray[index].id
     profiles: [
       {
         name: 'cpuProfile'
@@ -665,7 +680,7 @@ resource cpuBasedAutoscaleArray 'Microsoft.Insights/autoscalesettings@2022-10-01
             }
             metricTrigger: {
               metricName: 'Percentage CPU'
-              metricResourceUri: contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].id : scaleSetArray[1].id
+              metricResourceUri: scaleSetArray[index].id
               operator: 'GreaterThanOrEqual'
               statistic: 'Average'
               threshold: scaleSetScaleOutWhenCpuAbove
@@ -683,7 +698,7 @@ resource cpuBasedAutoscaleArray 'Microsoft.Insights/autoscalesettings@2022-10-01
             }
             metricTrigger: {
               metricName: 'Percentage CPU'
-              metricResourceUri: contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].id : scaleSetArray[1].id
+              metricResourceUri: scaleSetArray[index].id
               operator: 'LessThanOrEqual'
               statistic: 'Average'
               threshold: scaleSetScaleInWhenCpuBelow
@@ -703,8 +718,8 @@ resource cpuBasedAutoscaleArray 'Microsoft.Insights/autoscalesettings@2022-10-01
   }
 }]
 
-resource cpuMetricAlertsArray 'Microsoft.Insights/metricAlerts@2018-03-01' = [for colorItem in colorArray: {
-  name: colorItem == color.blue ? 'cpuMetricAlerts-${scaleSetName.blue}' : 'cpuMetricAlerts-${scaleSetName.green}'
+resource cpuMetricAlertsArray 'Microsoft.Insights/metricAlerts@2018-03-01' = [for (colorItem, index) in colorArray: {
+  name: 'cpuMetricAlerts-${scaleSetName[colorItem]}'
   location: 'global'
   properties: {
     criteria: {
@@ -733,14 +748,14 @@ resource cpuMetricAlertsArray 'Microsoft.Insights/metricAlerts@2018-03-01' = [fo
     enabled: true
     evaluationFrequency: 'PT1M'
     scopes: [
-      contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].id : scaleSetArray[1].id
+      scaleSetArray[index].id
     ]
     severity: 2 // 2 = Warning
     windowSize: 'PT15M' // CPU over vmCpuAlertThreshold for more than 15 minutes
   }
 }]
 
-resource memoryMetricAlertsArray 'Microsoft.Insights/metricAlerts@2018-03-01' = [for colorItem in colorArray: {
+resource memoryMetricAlertsArray 'Microsoft.Insights/metricAlerts@2018-03-01' = [for (colorItem, index) in colorArray: {
   name: colorItem == color.blue ? 'memoryMetricAlerts-${scaleSetName.blue}' : 'memoryMetricAlerts-${scaleSetName.green}'
   location: 'global'
   properties: {
@@ -769,7 +784,7 @@ resource memoryMetricAlertsArray 'Microsoft.Insights/metricAlerts@2018-03-01' = 
     enabled: true
     evaluationFrequency: 'PT1M'
     scopes: [
-      contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].id : scaleSetArray[1].id
+      scaleSetArray[index].id
     ]
     severity: 2 // 2 = Warning
     windowSize: 'PT5M' // 5 mins of memory pressure 
