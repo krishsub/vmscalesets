@@ -68,7 +68,7 @@ var storagePrivateLinkEndpointName = '${storageAccountName}-pvtendpt'
 var privateDnsZoneNetworkLinkName = '${privateLinkString}-linkto-${vnetName}'
 var storageBlobPrivateDnsZoneGroup = '${storagePrivateLinkEndpointName}-privatednszonegroup'
 
-resource networkSecurityGroup 'Microsoft.Network/networkSecurityGroups@2021-02-01' = {
+resource networkSecurityGroup 'Microsoft.Network/networkSecurityGroups@2022-07-01' = {
   name: nsgName
   location: location
   properties: {
@@ -147,7 +147,7 @@ resource networkSecurityGroup 'Microsoft.Network/networkSecurityGroups@2021-02-0
   }
 }
 
-resource virtualNetwork 'Microsoft.Network/virtualNetworks@2021-02-01' = {
+resource virtualNetwork 'Microsoft.Network/virtualNetworks@2022-07-01' = {
   name: vnetName
   location: location
   properties: {
@@ -195,7 +195,7 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2021-02-01' = {
   }
 }
 
-resource loadBalancer 'Microsoft.Network/loadBalancers@2021-02-01' = {
+resource loadBalancer 'Microsoft.Network/loadBalancers@2022-07-01' = {
   name: lbName
   location: location
   sku: {
@@ -259,7 +259,7 @@ resource loadBalancer 'Microsoft.Network/loadBalancers@2021-02-01' = {
   }
 }
 
-resource vmArray 'Microsoft.Compute/virtualMachines@2021-04-01' = [for colorItem in colorArray: {
+resource vmArray 'Microsoft.Compute/virtualMachines@2022-11-01' = [for colorItem in colorArray: {
   name: colorItem == color.blue ? vmName.blue : vmName.green
   location: location
   identity: {
@@ -296,7 +296,7 @@ resource vmArray 'Microsoft.Compute/virtualMachines@2021-04-01' = [for colorItem
   }
 }]
 
-resource vmNetworkInterfaceArray 'Microsoft.Network/networkInterfaces@2021-02-01' = [for colorItem in colorArray: {
+resource vmNetworkInterfaceArray 'Microsoft.Network/networkInterfaces@2022-07-01' = [for colorItem in colorArray: {
   name: colorItem == color.blue ? '${vmName.blue}-nic' : '${vmName.green}-nic'
   location: location
   properties: {
@@ -315,7 +315,7 @@ resource vmNetworkInterfaceArray 'Microsoft.Network/networkInterfaces@2021-02-01
   }
 }]
 
-resource scaleSetArray 'Microsoft.Compute/virtualMachineScaleSets@2021-04-01' = [for colorItem in colorArray: {
+resource scaleSetArray 'Microsoft.Compute/virtualMachineScaleSets@2022-11-01' = [for colorItem in colorArray: {
   name: colorItem == color.blue ? scaleSetName.blue : scaleSetName.green
   location: location
   sku: {
@@ -442,7 +442,7 @@ resource scaleSetArray 'Microsoft.Compute/virtualMachineScaleSets@2021-04-01' = 
   }
 }]
 
-resource bastionPublicIp 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
+resource bastionPublicIp 'Microsoft.Network/publicIPAddresses@2022-07-01' = {
   name: bastionPipName
   location: location
   sku: {
@@ -459,7 +459,7 @@ resource bastionPublicIp 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
   }
 }
 
-resource bastion 'Microsoft.Network/bastionHosts@2021-02-01' = {
+resource bastion 'Microsoft.Network/bastionHosts@2022-07-01' = {
   name: bastionName
   location: location
   sku: {
@@ -482,7 +482,7 @@ resource bastion 'Microsoft.Network/bastionHosts@2021-02-01' = {
   }
 }
 
-resource natGatewayPublicIp 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
+resource natGatewayPublicIp 'Microsoft.Network/publicIPAddresses@2022-07-01' = {
   name: natGatewayPipName
   location: location
   sku: {
@@ -499,7 +499,7 @@ resource natGatewayPublicIp 'Microsoft.Network/publicIPAddresses@2021-02-01' = {
   }
 }
 
-resource natGateway 'Microsoft.Network/natGateways@2021-02-01' = {
+resource natGateway 'Microsoft.Network/natGateways@2022-07-01' = {
   name: natGatewayName
   location: location
   sku: {
@@ -514,7 +514,7 @@ resource natGateway 'Microsoft.Network/natGateways@2021-02-01' = {
   }
 }
 
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2021-06-01' = {
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: logAnalyticsName
   location: location
   properties: {
@@ -538,7 +538,7 @@ resource vmInsightsSolution 'Microsoft.OperationsManagement/solutions@2015-11-01
   }
 }
 
-resource blobStorage 'Microsoft.Storage/storageAccounts@2021-04-01' = {
+resource blobStorage 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   name: storageAccountName
   location: location
   sku: {
@@ -552,41 +552,50 @@ resource blobStorage 'Microsoft.Storage/storageAccounts@2021-04-01' = {
   }
 }
 
-resource scaleSetToStorageWriterRoleAssignments 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = [for colorItem in colorArray: {
-  name: guid('ba92f5b4-2d11-453d-a403-e96b0029c9fe', blobStorage.id, contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].id : scaleSetArray[1].id)
+@description('This is the built-in Storage Blob Data Contributor role. See https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#storage-blob-data-contributor')
+resource storageBlobDataContributorRoleDef 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  scope: subscription()
+  name: 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
+}
+
+resource scaleSetToBlobDataContributorAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for (colorItem, index) in colorArray: {
+  name: guid(resourceGroup().id, scaleSetArray[index].id, blobStorage.id, storageBlobDataContributorRoleDef.id)
   scope: blobStorage
   properties: {
-    principalId: contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].identity.principalId : scaleSetArray[1].identity.principalId
-    roleDefinitionId: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/ba92f5b4-2d11-453d-a403-e96b0029c9fe'
+    principalId: scaleSetArray[index].identity.principalId
+    roleDefinitionId: storageBlobDataContributorRoleDef.id
   }
+  dependsOn: [
+    scaleSetArray
+  ]
 }]
 
-resource scaleSetToStorageReaderRoleAssignments 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = [for colorItem in colorArray: {
-  name: guid('acdd72a7-3385-48ef-bd42-f606fba81ae7', blobStorage.id, contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].id : scaleSetArray[1].id)
-  scope: blobStorage
-  properties: {
-    principalId: contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].identity.principalId : scaleSetArray[1].identity.principalId
-    roleDefinitionId: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7'
-  }
-}]
+// resource scaleSetToStorageReaderRoleAssignments 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = [for colorItem in colorArray: {
+//   name: guid('acdd72a7-3385-48ef-bd42-f606fba81ae7', blobStorage.id, contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].id : scaleSetArray[1].id)
+//   scope: blobStorage
+//   properties: {
+//     principalId: contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].identity.principalId : scaleSetArray[1].identity.principalId
+//     roleDefinitionId: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7'
+//   }
+// }]
 
-resource vmToStorageRoleAssignments 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = [for colorItem in colorArray: {
-  name: guid(blobStorage.id, contains(vmArray[0].name, colorItem) ? vmArray[0].id : vmArray[1].id)
-  scope: blobStorage
-  properties: {
-    principalId: contains(vmArray[0].name, colorItem) ? vmArray[0].identity.principalId : vmArray[1].identity.principalId
-    roleDefinitionId: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/ba92f5b4-2d11-453d-a403-e96b0029c9fe'
-  }
-}]
+// resource vmToStorageRoleAssignments 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = [for colorItem in colorArray: {
+//   name: guid(blobStorage.id, contains(vmArray[0].name, colorItem) ? vmArray[0].id : vmArray[1].id)
+//   scope: blobStorage
+//   properties: {
+//     principalId: contains(vmArray[0].name, colorItem) ? vmArray[0].identity.principalId : vmArray[1].identity.principalId
+//     roleDefinitionId: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/ba92f5b4-2d11-453d-a403-e96b0029c9fe'
+//   }
+// }]
 
-resource vmToScaleSetRoleAssignments 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = [for colorItem in colorArray: {
-  name: guid(contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].id : scaleSetArray[1].id, contains(vmArray[0].name, colorItem) ? vmArray[0].id : vmArray[1].id)
-  scope: contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0] : scaleSetArray[1]
-  properties: {
-    principalId: contains(vmArray[0].name, colorItem) ? vmArray[0].identity.principalId : vmArray[1].identity.principalId
-    roleDefinitionId: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7'
-  }
-}]
+// resource vmToScaleSetRoleAssignments 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = [for colorItem in colorArray: {
+//   name: guid(contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0].id : scaleSetArray[1].id, contains(vmArray[0].name, colorItem) ? vmArray[0].id : vmArray[1].id)
+//   scope: contains(scaleSetArray[0].name, colorItem) ? scaleSetArray[0] : scaleSetArray[1]
+//   properties: {
+//     principalId: contains(vmArray[0].name, colorItem) ? vmArray[0].identity.principalId : vmArray[1].identity.principalId
+//     roleDefinitionId: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7'
+//   }
+// }]
 
 resource blobCorePrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
   name: privateLinkBlobStorage
@@ -603,7 +612,7 @@ resource blobCorePrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' =
   }
 }
 
-resource blobStoragePrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-02-01' = {
+resource blobStoragePrivateEndpoint 'Microsoft.Network/privateEndpoints@2022-07-01' = {
   name: storagePrivateLinkEndpointName
   location: location
   properties: {
@@ -637,7 +646,7 @@ resource blobStoragePrivateEndpoint 'Microsoft.Network/privateEndpoints@2021-02-
   }
 }
 
-resource cpuBasedAutoscaleArray 'Microsoft.Insights/autoscalesettings@2015-04-01' = [for colorItem in colorArray: {
+resource cpuBasedAutoscaleArray 'Microsoft.Insights/autoscalesettings@2022-10-01' = [for colorItem in colorArray: {
   name: colorItem == color.blue ? 'cpuBasedAutoScale-${scaleSetName.blue}' : 'cpuBasedAutoScale-${scaleSetName.green}'
   location: location
   properties: {
@@ -766,3 +775,7 @@ resource memoryMetricAlertsArray 'Microsoft.Insights/metricAlerts@2018-03-01' = 
     windowSize: 'PT5M' // 5 mins of memory pressure 
   }
 }]
+
+output mi1 string = scaleSetArray[0].identity.principalId
+output mi2 string = scaleSetArray[1].identity.principalId
+output xxxx string = storageBlobDataContributorRoleDef.id
