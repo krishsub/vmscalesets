@@ -570,6 +570,7 @@ resource scaleSetToBlobDataContributorAssignments 'Microsoft.Authorization/roleA
   properties: {
     principalId: scaleSetArray[index].identity.principalId
     roleDefinitionId: storageBlobDataContributorRoleDef.id
+    principalType: 'ServicePrincipal'
   }
   dependsOn: [
     scaleSetArray
@@ -582,6 +583,7 @@ resource scaleSetToStorageReaderAssignments 'Microsoft.Authorization/roleAssignm
   properties: {
     principalId: scaleSetArray[index].identity.principalId
     roleDefinitionId: readerRoleDef.id
+    principalType: 'ServicePrincipal'
   }
   dependsOn: [
     scaleSetArray
@@ -594,6 +596,7 @@ resource vmToBlobDataContributorAssignments 'Microsoft.Authorization/roleAssignm
   properties: {
     principalId: vmArray[index].identity.principalId
     roleDefinitionId: storageBlobDataContributorRoleDef.id
+    principalType: 'ServicePrincipal'
   }
   dependsOn: [
     vmArray
@@ -606,6 +609,7 @@ resource vmToStorageReaderAssignments 'Microsoft.Authorization/roleAssignments@2
   properties: {
     principalId: vmArray[index].identity.principalId
     roleDefinitionId: readerRoleDef.id
+    principalType: 'ServicePrincipal'
   }
   dependsOn: [
     vmArray
