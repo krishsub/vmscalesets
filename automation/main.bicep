@@ -14,6 +14,7 @@ param scaleSetScaleOutWhenCpuAbove int = 50
 param scaleSetScaleInWhenCpuBelow int = 30
 param vmCpuAlertThreshold int = 75
 param vmFreeMemoryGBLessThanAlertThreshold int = 10
+param deployBastion bool = false
 
 var color = {
   blue: 'blue'
@@ -459,7 +460,7 @@ resource bastionPublicIp 'Microsoft.Network/publicIPAddresses@2022-07-01' = {
   }
 }
 
-resource bastion 'Microsoft.Network/bastionHosts@2022-07-01' = {
+resource bastion 'Microsoft.Network/bastionHosts@2022-07-01' = if (deployBastion) {
   name: bastionName
   location: location
   sku: {
