@@ -15,7 +15,7 @@ jobs:
       SCALESET_DEFAULT_VMCOUNT: 2
       SCALESET_MAX_VMCOUNT: 150
     # The type of runner that the job will run on
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
