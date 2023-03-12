@@ -14,7 +14,7 @@ $warningPreference = "SilentlyContinue"
 $storageAccount = Get-AzStorageAccount -ResourceGroupName $ResourceGroupName
 $autoScaleSettings = Get-AzAutoscaleSetting -ResourceGroupName $ResourceGroupName
 
-if ($autoScaleSettings -eq $null) {
+if ($null -eq $autoScaleSettings) {
     Write-Output "NULL = No autoscale settings found in resource group $ResourceGroupName"
 }
 
