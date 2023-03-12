@@ -14,6 +14,14 @@ $warningPreference = "SilentlyContinue"
 $storageAccount = Get-AzStorageAccount -ResourceGroupName $ResourceGroupName
 $autoScaleSettings = Get-AzAutoscaleSetting -ResourceGroupName $ResourceGroupName
 
+if ($autoScaleSettings -eq $null) {
+    Write-Output "NULL = No autoscale settings found in resource group $ResourceGroupName"
+}
+
+if ($autoScaleSettings.Count -eq 0) {
+    Write-Output "0 = No autoscale settings found in resource group $ResourceGroupName"
+}
+
 # Find the autoscale which has zero instances = inactive
 # Find the autoscale which has non-zero instances = active
 foreach ($item in $autoScaleSettings) {
