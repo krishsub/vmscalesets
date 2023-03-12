@@ -14,7 +14,7 @@ param scaleSetScaleOutWhenCpuAbove int = 50
 param scaleSetScaleInWhenCpuBelow int = 30
 param vmCpuAlertThreshold int = 75
 param vmFreeMemoryGBLessThanAlertThreshold int = 10
-param deployBastion bool = false
+param deployBastion bool = true
 
 var color = {
   blue: 'blue'
