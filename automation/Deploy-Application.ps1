@@ -8,6 +8,8 @@ param (
     $ReleaseFolderName
 )
 
+Write-Output "Deploy-Application.ps1 started"
+
 $extensionName = "AppInstallExtension"
 $warningPreference = "SilentlyContinue"
 
