@@ -6,6 +6,7 @@ using Sample.WebApp.Contracts;
 using System;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace Sample.WebApp.Pages
@@ -29,15 +30,15 @@ namespace Sample.WebApp.Pages
         {
             // Period between first seeing termination event and approving it.
             TimeSpan gracePeriodSeconds = TimeSpan.FromSeconds(Int32.Parse(_configuration["ScheduledEventsGracePeriodSeconds"]));
-            using (WebClient httpClient = new WebClient())
+            using (var httpClient = new HttpClient())
             {
-                httpClient.Headers.Add("Metadata", "True");
-                string eventsJson = await httpClient.DownloadStringTaskAsync(scheduledEventsEndpoint);
+                httpClient.DefaultRequestHeaders.Add("Metadata", "True");
+                string eventsJson = await httpClient.GetStringAsync(scheduledEventsEndpoint);
                 ScheduledEventsDocument scheduledEventsDocument = JsonConvert.DeserializeObject<ScheduledEventsDocument>(eventsJson);
                 if (scheduledEventsDocument.Events?.Count > 0) // there is a scheduled event
                 {
                     string[] vmList = scheduledEventsDocument.Events.SelectMany(e => e.Resources).ToArray();
-                    string instanceJson = await httpClient.DownloadStringTaskAsync(instanceMetadataEndpoint);
+                    string instanceJson = await httpClient.GetStringAsync(instanceMetadataEndpoint);
                     InstanceDocument instanceDocument = JsonConvert.DeserializeObject<InstanceDocument>(instanceJson);
                     if (vmList.Contains(instanceDocument.Compute.Name)) // is it for me?
                     {
@@ -56,10 +57,9 @@ namespace Sample.WebApp.Pages
                             {
                                 approval.StartRequests.Add(new StartRequest(anEvent.EventId));
                             }
-                            string approveEventsJsonDocument = JsonConvert.SerializeObject(approval);
-                            httpClient.Headers.Add("Content-Type", "application/json");
-                            httpClient.UploadStringAsync(
-                                new Uri(scheduledEventsEndpoint), approveEventsJsonDocument);
+                            var approveEventsJsonDocument = new StringContent(JsonConvert.SerializeObject(approval));
+                            httpClient.DefaultRequestHeaders.Add("Content-Type", "application/json");
+                            await httpClient.PostAsync(new Uri(scheduledEventsEndpoint), approveEventsJsonDocument);
                         }
                         // throw an exception for an unhealthy response
                         _logger.LogWarning($"Instance {instanceDocument.Compute.Name} marked for an event, sending unhealthy response");
