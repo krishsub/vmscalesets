@@ -51,7 +51,7 @@ if ($inactiveAutoScaleProfile -and $activeAutoScaleProfile -and $storageAccount 
         "fileUris"         = (
             "$($storageAccount.PrimaryEndpoints.Blob)$BlobContainerName/install.ps1",
             "$($storageAccount.PrimaryEndpoints.Blob)$BlobContainerName/azcopy.exe",
-            "$($storageAccount.PrimaryEndpoints.Blob)$BlobContainerName/dotnet-hosting-5.0.11-win.exe"
+            "https://dotnet.microsoft.com/download/dotnet/scripts/v1/dotnet-install.ps1"
         );
         "commandToExecute" = "powershell -ExecutionPolicy Unrestricted -File install.ps1 $($storageAccount.PrimaryEndpoints.Blob)$BlobContainerName  $ReleaseFolderName"
     }

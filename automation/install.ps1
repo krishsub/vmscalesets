@@ -6,7 +6,7 @@ Start-Transcript
 Install-WindowsFeature Web-Server -IncludeManagementTools
 
 # Install .NET Core 5.x 
-.\dotnet-sdk-7.0.201-win-x64.exe /install /quiet /norestart /log dotnetlog.txt
+.\dotnet-install.ps1
 
 # Restart IIS
 net stop was /y
