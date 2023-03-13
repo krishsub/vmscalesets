@@ -395,7 +395,7 @@ resource scaleSetArray 'Microsoft.Compute/virtualMachineScaleSets@2022-11-01' = 
               publisher: 'Microsoft.Azure.Security'
               type: 'IaaSAntimalware'
               typeHandlerVersion: '1.7'
-              enableAutomaticUpgrade: true
+              autoUpgradeMinorVersion: true
               settings: {
                 AntimalwareEnabled: true
                 RealtimeProtectionEnabled: true
