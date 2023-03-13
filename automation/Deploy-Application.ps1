@@ -8,21 +8,11 @@ param (
     $ReleaseFolderName
 )
 
-Write-Output "Deploy-Application.ps1 started"
-
 $extensionName = "AppInstallExtension"
 $warningPreference = "SilentlyContinue"
 
 $storageAccount = Get-AzStorageAccount -ResourceGroupName $ResourceGroupName
 $autoScaleSettings = Get-AzAutoscaleSetting -ResourceGroupName $ResourceGroupName
-
-if ($null -eq $autoScaleSettings) {
-    Write-Output "NULL = No autoscale settings found in resource group $ResourceGroupName"
-}
-
-if ($autoScaleSettings.Count -eq 0) {
-    Write-Output "0 = No autoscale settings found in resource group $ResourceGroupName"
-}
 
 # Find the autoscale which has zero instances = inactive
 # Find the autoscale which has non-zero instances = active
@@ -30,11 +20,11 @@ foreach ($item in $autoScaleSettings) {
     $someResource = Get-AzResource -ResourceId $item.TargetResourceUri
     $someVmss = Get-AzVmss -ResourceGroupName $someResource.ResourceGroupName -VMScaleSetName $someResource.ResourceName 
     # sanity check; actual VMSS count should be zero <-- matches auto-scale 0 default
-    if ($item.Profiles[0].Capacity.DefaultProperty -eq 0 -and $someVmss.Sku.Capacity -eq 0) {
+    if ($item.Profile[0].CapacityDefault -eq 0 -and $someVmss.Sku.Capacity -eq 0) {
         $inactiveAutoScaleProfile = $item
     }
     # actual VMSS count should be non-zero <-- matches auto-scale non-zero default
-    if ($item.Profiles[0].Capacity.DefaultProperty -gt 0 -and $someVmss.Sku.Capacity -gt 0) {
+    if ($item.Profile[0].CapacityDefault -gt 0 -and $someVmss.Sku.Capacity -gt 0) {
         $activeAutoScaleProfile = $item
     }
 }
@@ -61,7 +51,7 @@ if ($inactiveAutoScaleProfile -and $activeAutoScaleProfile -and $storageAccount 
         "fileUris"         = (
             "$($storageAccount.PrimaryEndpoints.Blob)$BlobContainerName/install.ps1",
             "$($storageAccount.PrimaryEndpoints.Blob)$BlobContainerName/azcopy.exe",
-            "https://dotnet.microsoft.com/download/dotnet/scripts/v1/dotnet-install.ps1"
+            "https://download.visualstudio.microsoft.com/download/pr/b7d6d427-1b5a-4152-8851-f3ac29d708d3/06489eb031cb0b842602f870e05ed34f/dotnet-sdk-7.0.201-win-x64.exe"
         );
         "commandToExecute" = "powershell -ExecutionPolicy Unrestricted -File install.ps1 $($storageAccount.PrimaryEndpoints.Blob)$BlobContainerName  $ReleaseFolderName"
     }
@@ -109,7 +99,10 @@ if ($inactiveAutoScaleProfile -and $activeAutoScaleProfile -and $storageAccount 
         Write-Output "Scale-in $($activeVmss.Name) completed"
 
         # Swap autoscale profiles between active & inactive VMSS
-        $inactiveAutoScaleProfile.Profiles[0].Capacity, $activeAutoScaleProfile.Profiles[0].Capacity = $activeAutoScaleProfile.Profiles[0].Capacity, $inactiveAutoScaleProfile.Profiles[0].Capacity
+        $inactiveAutoScaleProfile.Profile[0].CapacityDefault, $activeAutoScaleProfile.Profile[0].CapacityDefault = $activeAutoScaleProfile.Profile[0].CapacityDefault, $inactiveAutoScaleProfile.Profile[0].CapacityDefault
+        $inactiveAutoScaleProfile.Profile[0].CapacityMinimum, $activeAutoScaleProfile.Profile[0].CapacityMinimum = $activeAutoScaleProfile.Profile[0].CapacityMinimum, $inactiveAutoScaleProfile.Profile[0].CapacityMinimum
+        $inactiveAutoScaleProfile.Profile[0].CapacityMaximum, $activeAutoScaleProfile.Profile[0].CapacityMaximum = $activeAutoScaleProfile.Profile[0].CapacityMaximum, $inactiveAutoScaleProfile.Profile[0].CapacityMaximum
+        
         $inactiveAutoScaleProfile | Add-AzAutoscaleSetting | Out-Null
         $activeAutoScaleProfile | Add-AzAutoscaleSetting | Out-Null
         
