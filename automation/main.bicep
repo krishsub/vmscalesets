@@ -4,6 +4,7 @@ param scaleSetNamePrefix string
 param location string = resourceGroup().location
 param vmPrefix string = 'vm'
 param vmSku string = 'Standard_D4ds_v4'
+param imageSku string = '2022-Datacenter'
 param adminUsername string = 'azureuser'
 @secure()
 param adminPassword string
@@ -279,7 +280,7 @@ resource vmArray 'Microsoft.Compute/virtualMachines@2022-11-01' = [for (colorIte
       imageReference: {
         offer: 'WindowsServer'
         publisher: 'MicrosoftWindowsServer'
-        sku: '2019-Datacenter'
+        sku: imageSku
         version: 'latest'
       }
       osDisk: {
@@ -372,7 +373,7 @@ resource scaleSetArray 'Microsoft.Compute/virtualMachineScaleSets@2022-11-01' = 
         imageReference: {
           offer: 'WindowsServer'
           publisher: 'MicrosoftWindowsServer'
-          sku: '2019-Datacenter'
+          sku: imageSku
           version: 'latest'
         }
         osDisk: {
@@ -393,8 +394,8 @@ resource scaleSetArray 'Microsoft.Compute/virtualMachineScaleSets@2022-11-01' = 
             properties: {
               publisher: 'Microsoft.Azure.Security'
               type: 'IaaSAntimalware'
-              typeHandlerVersion: '1.5'
-              autoUpgradeMinorVersion: true
+              typeHandlerVersion: '1.7'
+              enableAutomaticUpgrade: true
               settings: {
                 AntimalwareEnabled: true
                 RealtimeProtectionEnabled: true
@@ -408,19 +409,12 @@ resource scaleSetArray 'Microsoft.Compute/virtualMachineScaleSets@2022-11-01' = 
             }
           }
           {
-            name: 'MicrosoftMonitoringAgent'
+            name: 'AzureMonitorWindowsAgent'
             properties: {
-              publisher: 'Microsoft.EnterpriseCloud.Monitoring'
-              type: 'MicrosoftMonitoringAgent'
-              typeHandlerVersion: '1.0'
-              autoUpgradeMinorVersion: true
-              settings: {
-                workspaceId: logAnalytics.properties.customerId
-                stopOnMultipleConnections: false
-              }
-              protectedSettings: {
-                workspaceKey: logAnalytics.listKeys().primarySharedKey
-              }
+              publisher: 'Microsoft.Azure.Monitor'
+              type: 'AzureMonitorWindowsAgent'
+              typeHandlerVersion: '1.9'
+              enableAutomaticUpgrade: true
               provisionAfterExtensions: [
                 'IaaSAntimalware'
               ]
@@ -432,8 +426,9 @@ resource scaleSetArray 'Microsoft.Compute/virtualMachineScaleSets@2022-11-01' = 
               publisher: 'Microsoft.Azure.Monitoring.DependencyAgent'
               type: 'DependencyAgentWindows'
               typeHandlerVersion: '9.9'
+              enableAutomaticUpgrade: true
               provisionAfterExtensions: [
-                'MicrosoftMonitoringAgent'
+                'AzureMonitorWindowsAgent'
               ]
             }
           }
