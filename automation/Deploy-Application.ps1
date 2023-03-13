@@ -51,7 +51,7 @@ if ($inactiveAutoScaleProfile -and $activeAutoScaleProfile -and $storageAccount 
         "fileUris"         = (
             "$($storageAccount.PrimaryEndpoints.Blob)$BlobContainerName/install.ps1",
             "$($storageAccount.PrimaryEndpoints.Blob)$BlobContainerName/azcopy.exe",
-            "https://download.visualstudio.microsoft.com/download/pr/b7d6d427-1b5a-4152-8851-f3ac29d708d3/06489eb031cb0b842602f870e05ed34f/dotnet-sdk-7.0.201-win-x64.exe"
+            "https://download.visualstudio.microsoft.com/download/pr/ff197e9e-44ac-40af-8ba7-267d92e9e4fa/d24439192bc549b42f9fcb71ecb005c0/dotnet-hosting-7.0.3-win.exe"
         );
         "commandToExecute" = "powershell -ExecutionPolicy Unrestricted -File install.ps1 $($storageAccount.PrimaryEndpoints.Blob)$BlobContainerName  $ReleaseFolderName"
     }
