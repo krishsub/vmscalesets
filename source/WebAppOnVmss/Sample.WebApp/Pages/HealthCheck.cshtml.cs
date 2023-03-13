@@ -47,6 +47,7 @@ namespace Sample.WebApp.Pages
                         else if (DateTime.UtcNow - firstSeenScheduledEvent > gracePeriodSeconds)
                         {
                             // approve it
+                            _logger.LogWarning($"Attempting event approval from {instanceDocument.Compute.Name}");
                             ScheduledEventsApproval approval = new ScheduledEventsApproval()
                             {
                                 DocumentIncarnation = scheduledEventsDocument.DocumentIncarnation
@@ -60,6 +61,7 @@ namespace Sample.WebApp.Pages
                             var approveEventsJsonDocument = new StringContent(JsonConvert.SerializeObject(approval));
                             httpClient.DefaultRequestHeaders.Add("Content-Type", "application/json");
                             await httpClient.PostAsync(new Uri(scheduledEventsEndpoint), approveEventsJsonDocument);
+                            _logger.LogWarning($"Succeeded event approval from {instanceDocument.Compute.Name}");
                         }
                         // throw an exception for an unhealthy response
                         _logger.LogWarning($"Instance {instanceDocument.Compute.Name} marked for an event, sending unhealthy response");
