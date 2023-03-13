@@ -103,8 +103,8 @@ if ($inactiveAutoScaleProfile -and $activeAutoScaleProfile -and $storageAccount 
         $inactiveAutoScaleProfile.Profile[0].CapacityMinimum, $activeAutoScaleProfile.Profile[0].CapacityMinimum = $activeAutoScaleProfile.Profile[0].CapacityMinimum, $inactiveAutoScaleProfile.Profile[0].CapacityMinimum
         $inactiveAutoScaleProfile.Profile[0].CapacityMaximum, $activeAutoScaleProfile.Profile[0].CapacityMaximum = $activeAutoScaleProfile.Profile[0].CapacityMaximum, $inactiveAutoScaleProfile.Profile[0].CapacityMaximum
         
-        $inactiveAutoScaleProfile | Add-AzAutoscaleSetting | Out-Null
-        $activeAutoScaleProfile | Add-AzAutoscaleSetting | Out-Null
+        $inactiveAutoScaleProfile | Update-AzAutoscaleSetting | Out-Null
+        $activeAutoScaleProfile | Update-AzAutoscaleSetting | Out-Null
         
         Write-Output "################## Done scale swap ##################"
     }
