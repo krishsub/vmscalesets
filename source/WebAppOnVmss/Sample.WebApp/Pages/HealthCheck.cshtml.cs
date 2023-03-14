@@ -38,8 +38,8 @@ namespace Sample.WebApp.Pages
                 ScheduledEventsDocument scheduledEventsDocument = JsonConvert.DeserializeObject<ScheduledEventsDocument>(eventsJson);
                 if (scheduledEventsDocument.Events?.Count > 0) // there is a scheduled event
                 {
-                    _logger.LogInformation("Scheduled event: {0}", scheduledEventsDocument);
                     string[] vmList = scheduledEventsDocument.Events.SelectMany(e => e.Resources).ToArray();
+                    _logger.LogInformation("Scheduled event: {0}", string.Join(", ", vmList));
                     string instanceJson = await httpClient.GetStringAsync(instanceMetadataEndpoint);
                     InstanceDocument instanceDocument = JsonConvert.DeserializeObject<InstanceDocument>(instanceJson);
                     if (vmList.Contains(instanceDocument.Compute.Name)) // is it for me?
@@ -61,7 +61,6 @@ namespace Sample.WebApp.Pages
                                 approval.StartRequests.Add(new StartRequest(anEvent.EventId));
                             }
                             var approveEventsJsonDocument = new StringContent(JsonConvert.SerializeObject(approval));
-                            httpClient.DefaultRequestHeaders.Add("Content-Type", "application/json");
                             await httpClient.PostAsync(new Uri(scheduledEventsEndpoint), approveEventsJsonDocument);
                             _logger.LogWarning($"Succeeded event approval from {instanceDocument.Compute.Name}");
                         }
@@ -71,7 +70,7 @@ namespace Sample.WebApp.Pages
                     }
                     else
                     {
-                        _logger.LogInformation("OnGet(), Scheduled event, but not for self: {0}", scheduledEventsDocument);
+                        _logger.LogInformation("OnGet(), Scheduled event, but not for self: {0}", instanceDocument.Compute.Name);
                     }
                 }
             }
