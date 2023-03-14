@@ -28,6 +28,7 @@ namespace Sample.WebApp.Pages
 
         public async Task OnGet()
         {
+            _logger.LogInformation("OnGet()");
             // Period between first seeing termination event and approving it.
             TimeSpan gracePeriodSeconds = TimeSpan.FromSeconds(Int32.Parse(_configuration["ScheduledEventsGracePeriodSeconds"]));
             using (var httpClient = new HttpClient())
@@ -37,6 +38,7 @@ namespace Sample.WebApp.Pages
                 ScheduledEventsDocument scheduledEventsDocument = JsonConvert.DeserializeObject<ScheduledEventsDocument>(eventsJson);
                 if (scheduledEventsDocument.Events?.Count > 0) // there is a scheduled event
                 {
+                    _logger.LogInformation("Scheduled event: {0}", scheduledEventsDocument);
                     string[] vmList = scheduledEventsDocument.Events.SelectMany(e => e.Resources).ToArray();
                     string instanceJson = await httpClient.GetStringAsync(instanceMetadataEndpoint);
                     InstanceDocument instanceDocument = JsonConvert.DeserializeObject<InstanceDocument>(instanceJson);
@@ -66,6 +68,10 @@ namespace Sample.WebApp.Pages
                         // throw an exception for an unhealthy response
                         _logger.LogWarning($"Instance {instanceDocument.Compute.Name} marked for an event, sending unhealthy response");
                         throw new Exception($"Instance {instanceDocument.Compute.Name} marked for an event");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("OnGet(), Scheduled event, but not for self: {0}", scheduledEventsDocument);
                     }
                 }
             }

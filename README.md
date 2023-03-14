@@ -19,8 +19,11 @@ pieces:
   - [main.bicep](./automation/main.bicep)
   - [Post-Deploy.ps1](./automation/Post-Deploy.ps1)
 - [deploy-application.yml](./.github/workflows/deploy-application.yml) has the
-workflow to perform the blue/green deployment. There are a few pre-requisites
-before running this workflow. The workflow defines 3 environment variables:
+workflow to perform the blue/green deployment. The workflow relies on 
+[Deploy-Application.ps1](./automation/Deploy-Application.ps1) to do the heavy 
+lifting. Comments in this file should explain the blue/green deployment model 
+with two VMSS.There are a few pre-requisites before running this workflow. 
+The workflow defines 3 environment variables:
     ```
     RESOURCE_GROUP_NAME: <value> (e.g. my-resource-group)
     RELEASE_FOLDER_NAME: <value> (e.g. 1.234)
@@ -28,17 +31,22 @@ before running this workflow. The workflow defines 3 environment variables:
     ```
 
 The storage account created by Bicep should have a blob container with above
-`BLOB_CONTAINER_NAME` and containing two artifacts uploaded to it:
+`BLOB_CONTAINER_NAME` and containing three assets uploaded to it:
   - [install.ps1](./automation/install.ps1) contains the installation script
-  for installing the workload on the VMSS.
+  for installing the workload on the VMSS. Place this in the blob container
+  root.
   - [azcopy.exe](./automation/azcopy.exe) the azcopy binary that pulls
-  files from `RELEASE_FOLDER_NAME` under the `BLOB_CONTAINER_NAME`. In this
-  repo example, simply take the artifact generated from 
+  files from `RELEASE_FOLDER_NAME` under the `BLOB_CONTAINER_NAME`. 
+  - In this repo example, simply take the `artifact.zip` generated from 
   [code-build.yml](./.github/workflows/code-build.yml), unzip it and upload 
-  it's contents to the `RELEASE_FOLDER_NAME`.
+  it's contents to the `RELEASE_FOLDER_NAME`. 
 
-The workflow relies on [Deploy-Application.ps1](./automation/Deploy-Application.ps1)
-to do the heavy lifting. Comments in this file should explain the blue/green deployment model with two VMSS.
+The VMSS Extension results in the first two files (and the .NET hosting
+bundle) being copied to each of VMSS instances. The `install.ps1` is
+triggered inside the VM and it uses `azcopy` and the managed identity of
+the VM to pull in the workload assets from the `RELEASE_FOLDER_NAME` in the
+storage account. These assets are 
+
 
 ## How it works
 
@@ -52,7 +60,7 @@ In order to prevent this scenario, we need to connection drain gracefully.
 In essence:
 - Delay the deletion of the VM instance for some minutes (5-15 minutes). The
 [main.bicep](./automation/main.bicep) has a `terminateNotificationProfile`
-for the blue/green VMSS. 
+for the blue/green VMSS. [Link](https://learn.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-terminate-notification#rest-api)
 - In this period, each VM in VMSS can query the Terminate Notification endpoint
 and IMDS endpoint (see above links) to see if there is a Terminate event 
 meant for itself.
@@ -69,6 +77,8 @@ will mark the (VM) instance as unhealthy and stop forwarding traffic to it.
 unhealthy responses and approve the Terminate event (if required) after a
 safe period (safe period = load balancer configuration for `n` retries
 at `m` second intervals).  
+
+There termin 
 
 ## Contributing
 
