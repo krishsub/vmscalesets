@@ -234,7 +234,7 @@ resource loadBalancer 'Microsoft.Network/loadBalancers@2022-07-01' = {
           port: 80
           protocol: 'Http'
           intervalInSeconds: 5
-          numberOfProbes: 5
+          numberOfProbes: 1 // was 5 https://learn.microsoft.com/en-us/azure/load-balancer/whats-new#known-issues
           requestPath: lbHealthProbeReqPath
         }
       }
