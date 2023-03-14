@@ -22,7 +22,7 @@ pieces:
 workflow to perform the blue/green deployment. The workflow relies on 
 [Deploy-Application.ps1](./automation/Deploy-Application.ps1) to do the heavy 
 lifting. Comments in this file should explain the blue/green deployment model 
-with two VMSS.There are a few pre-requisites before running this workflow. 
+with two VMSS. There are a few pre-requisites before running this workflow. 
 The workflow defines 3 environment variables:
     ```
     RESOURCE_GROUP_NAME: <value> (e.g. my-resource-group)
@@ -45,16 +45,27 @@ The VMSS Extension results in the first two files (and the .NET hosting
 bundle) being copied to each of VMSS instances. The `install.ps1` is
 triggered inside the VM and it uses `azcopy` and the managed identity of
 the VM to pull in the workload assets from the `RELEASE_FOLDER_NAME` in the
-storage account. These assets are 
+storage account. These assets are used to install and configure the workload
+on each of VM in the VMSS.
 
 
 ## How it works
 
-With a workload deployed on VMSS fronted by a load balancer or application gateway,
-when a scale-in event (manual, auto-scale, etc.) happens, the VM is deleted.
-The load-balancer or application gateway will reconfigure the backend pool but
-since there is no connection draining, there will be requests to the workload
-that fail as the backend VM was deleted.
+When a VMSS is hooked up to a load balancer (or application gateway),
+the backend pool of the load balancer is automatically configured so
+that when new instances are added or removed from the VMSS, the load
+balancer's backend pool is reconfigured as well.
+
+This happens automatically and requires no user intervention.
+
+However, the load balancer has no way of knowing that a particular VM is
+*going* to be deleted. So for a workload under some load (HTTP/HTTPS traffic),
+there are two scenarios that will results in errors for callers.
+
+1. Any in-flight request that is executing on the VM might fail as that 
+VM is deleted. 
+2. A new request from a caller is routed to a deleted VM before the load 
+balancer configuration takes effect.
 
 In order to prevent this scenario, we need to connection drain gracefully.
 In essence:
@@ -63,22 +74,25 @@ In essence:
 for the blue/green VMSS. [Link](https://learn.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-terminate-notification#rest-api)
 - In this period, each VM in VMSS can query the Terminate Notification endpoint
 and IMDS endpoint (see above links) to see if there is a Terminate event 
-meant for itself.
-- There is no need to poll this endpoint manually -- since the load balancer
-or application gateway will be configured with a health probe that pings an
-application endpoint every x seconds, simply piggyback off this. So in the
-health probe implementation in your workload, simply check for the terminate
-event for yourself. If there is, send a non-200 HTTP code back to the load 
-balancer health probe.
+meant for itself. All instances in the VMSS receive a terminate notification,
+but the notification has a list of which VMs are going to be affected. The
+IMDS endpoint has the information on the VM - as the local machine name
+might have a different name than what Azure's Resource Manager gave it. 
+- There is no need to poll this Terminate and IMDS endpoint manually. Since 
+the load balancer or application gateway will be configured with a health 
+probe that pings an application endpoint every x seconds, simply piggyback 
+off this. So in the health probe implementation in your workload, simply 
+check if there is a terminate event for yourself. If there is, send a 
+non-200 HTTP code back to the load balancer health probe.
 - The load balancer health probes will see an unhealthy response coming from
 the application. After the configured number of consequentive failures, it
 will mark the (VM) instance as unhealthy and stop forwarding traffic to it.
 - This is the drain implementation. Within the VM instance, keep sending
 unhealthy responses and approve the Terminate event (if required) after a
 safe period (safe period = load balancer configuration for `n` retries
-at `m` second intervals).  
+at `m` second intervals). If no approval happens, then the instance is force
+terminated after `notBeforeTimeout` in the `terminateNotificationProfile`.
 
-There termin 
 
 ## Contributing
 
