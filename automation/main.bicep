@@ -790,7 +790,3 @@ resource memoryMetricAlertsArray 'Microsoft.Insights/metricAlerts@2018-03-01' = 
     windowSize: 'PT5M' // 5 mins of memory pressure 
   }
 }]
-
-output mi1 string = scaleSetArray[0].identity.principalId
-output mi2 string = scaleSetArray[1].identity.principalId
-output xxxx string = storageBlobDataContributorRoleDef.id
