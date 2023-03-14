@@ -35,7 +35,7 @@ The storage account created by Bicep should have a blob container with above
   - [install.ps1](./automation/install.ps1) contains the installation script
   for installing the workload on the VMSS. Place this in the blob container
   root.
-  - [azcopy.exe](./automation/azcopy.exe) the azcopy binary. Pleace this also
+  - [azcopy.exe](./automation/azcopy.exe) the azcopy binary. Place this also
   in the blob container root. It will be used by instances in the VMSS to 
   pull files from `RELEASE_FOLDER_NAME` under the `BLOB_CONTAINER_NAME`. 
   - Workload assets uploaded to `RELEASE_FOLDER_NAME`. In this repo example, 
@@ -71,6 +71,19 @@ balancer configuration takes effect.
 
 In order to prevent this scenario, we need to connection drain gracefully.
 In essence:
+- Don't delete instances in VMSS immediately, but delay their deletion.
+- Stop routing (new) requests from callers to instances in VMSS that are
+going to be deleted.
+- Let existing requests that are being processed from callers continue for
+a grace period (i.e. the delay).
+- Once we are reasonably sure no traffic is being handled, we are free to
+delete the instance(s) in the VMSS.
+
+The above is effectively a simplistic connection drain in
+theory. 
+
+## How it works - implementation
+
 - Delay the deletion of the VM instance for some minutes (5-15 minutes). The
 [main.bicep](./automation/main.bicep) has a `terminateNotificationProfile`
 for the blue/green VMSS. [Link](https://learn.microsoft.com/en-us/azure/virtual-machine-scale-sets/virtual-machine-scale-sets-terminate-notification#rest-api)
@@ -78,14 +91,15 @@ for the blue/green VMSS. [Link](https://learn.microsoft.com/en-us/azure/virtual-
 and IMDS endpoint (see above links) to see if there is a Terminate event 
 meant for itself. All instances in the VMSS receive a terminate notification,
 but the notification has a list of which VMs are going to be affected. The
-IMDS endpoint has the information on the VM - as the local machine name
+IMDS endpoint has the information on the VM name - as the local machine name
 might have a different name than what Azure's Resource Manager gave it. 
 - There is no need to poll this Terminate and IMDS endpoint manually. Since 
 the load balancer or application gateway will be configured with a health 
 probe that pings an application endpoint every x seconds, simply piggyback 
 off this. So in the health probe implementation in your workload, simply 
 check if there is a terminate event for yourself. If there is, send a 
-non-200 HTTP code back to the load balancer health probe.
+non-200 HTTP code back to the load balancer health probe. Keep sending
+this non-200 HTTP code back to the load balancer health probe. 
 - The load balancer health probes will see an unhealthy response coming from
 the application. After the configured number of consequentive failures, it
 will mark the (VM) instance as unhealthy and stop forwarding traffic to it.
@@ -94,6 +108,10 @@ unhealthy responses and approve the Terminate event (if required) after a
 safe period (safe period = load balancer configuration for `n` retries
 at `m` second intervals). If no approval happens, then the instance is force
 terminated after `notBeforeTimeout` in the `terminateNotificationProfile`.
+Approving the event is simply an optimization instead of waiting for
+`notBeforeTimeout` to expire. So, we are sure the drain has completed earlier
+than the `notBeforeTimeout`, then the instance doesn't hang around and indicates
+to the Azure platform that it can be removed.
 
 
 ## Contributing
