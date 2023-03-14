@@ -35,18 +35,20 @@ The storage account created by Bicep should have a blob container with above
   - [install.ps1](./automation/install.ps1) contains the installation script
   for installing the workload on the VMSS. Place this in the blob container
   root.
-  - [azcopy.exe](./automation/azcopy.exe) the azcopy binary that pulls
-  files from `RELEASE_FOLDER_NAME` under the `BLOB_CONTAINER_NAME`. 
-  - In this repo example, simply take the `artifact.zip` generated from 
-  [code-build.yml](./.github/workflows/code-build.yml), unzip it and upload 
-  it's contents to the `RELEASE_FOLDER_NAME`. 
+  - [azcopy.exe](./automation/azcopy.exe) the azcopy binary. Pleace this also
+  in the blob container root. It will be used by instances in the VMSS to 
+  pull files from `RELEASE_FOLDER_NAME` under the `BLOB_CONTAINER_NAME`. 
+  - Workload assets uploaded to `RELEASE_FOLDER_NAME`. In this repo example, 
+  simply take the `artifact.zip` generated from [code-build.yml](./.github/workflows/code-build.yml), 
+  unzip it and upload it's contents to the `RELEASE_FOLDER_NAME` under the
+  `BLOB_CONTAINER_NAME`. 
 
 The VMSS Extension results in the first two files (and the .NET hosting
-bundle) being copied to each of VMSS instances. The `install.ps1` is
-triggered inside the VM and it uses `azcopy` and the managed identity of
-the VM to pull in the workload assets from the `RELEASE_FOLDER_NAME` in the
-storage account. These assets are used to install and configure the workload
-on each of VM in the VMSS.
+bundle from a public Microsoft link) being copied to each of VMSS instances.
+The `install.ps1` is triggered inside the VM and it uses `azcopy` and the 
+managed identity of the VM (i.e. the VMSS) to pull in the workload assets from
+the `RELEASE_FOLDER_NAME` in the storage account. These assets are used to 
+install and configure the workload on each of VM in the VMSS.
 
 
 ## How it works
