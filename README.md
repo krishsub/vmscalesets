@@ -40,6 +40,36 @@ The storage account created by Bicep should have a blob container with above
 The workflow relies on [Deploy-Application.ps1](./automation/Deploy-Application.ps1)
 to do the heavy lifting. Comments in this file should explain the blue/green deployment model with two VMSS.
 
+## How it works
+
+With a workload deployed on VMSS fronted by a load balancer or application gateway,
+when a scale-in event (manual, auto-scale, etc.) happens, the VM is deleted.
+The load-balancer or application gateway will reconfigure the backend pool but
+since there is no connection draining, there will be requests to the workload
+that fail as the backend VM was deleted.
+
+In order to prevent this scenario, we need to connection drain gracefully.
+In essence:
+- Delay the deletion of the VM instance for some minutes (5-15 minutes)
+- In this period, each VM in VMSS can query the Terminate Notificate endpoint
+and IMDS endpoint to see if there is a Terminate event meant for itself.
+- There is no need to poll this endpoint manually -- since the load balancer
+or application gteway will be configured with a health probe that pings an
+application endpoint every x seconds, simply piggyback off this. So in the
+health probe implementation in your workload, simply check for the terminate
+event for yourself. If there is, send a non-200 code back to the load balancer
+health probe.
+- The load balancer health probes will see an unhealthy response coming from
+the application. After the configured number of consequentive failures, it
+will mark the (VM) instance as unhealthy and stop forwarding traffic to it.
+- This is the drain implementation. Within the VM instance, keep sending
+unhealthy responses and approve the Terminate event (if required) after a
+safe period (safe period = load balancer configuration for `n` retries
+at `m` second intervals).  
+
+The [main.bicep](./automation/main.bicep) has a `terminateNotificationProfile`
+for the blue/green VMSS. 
+
 ## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a
