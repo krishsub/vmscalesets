@@ -50,15 +50,18 @@ that fail as the backend VM was deleted.
 
 In order to prevent this scenario, we need to connection drain gracefully.
 In essence:
-- Delay the deletion of the VM instance for some minutes (5-15 minutes)
-- In this period, each VM in VMSS can query the Terminate Notificate endpoint
-and IMDS endpoint to see if there is a Terminate event meant for itself.
+- Delay the deletion of the VM instance for some minutes (5-15 minutes). The
+[main.bicep](./automation/main.bicep) has a `terminateNotificationProfile`
+for the blue/green VMSS. 
+- In this period, each VM in VMSS can query the Terminate Notification endpoint
+and IMDS endpoint (see above links) to see if there is a Terminate event 
+meant for itself.
 - There is no need to poll this endpoint manually -- since the load balancer
-or application gteway will be configured with a health probe that pings an
+or application gateway will be configured with a health probe that pings an
 application endpoint every x seconds, simply piggyback off this. So in the
 health probe implementation in your workload, simply check for the terminate
-event for yourself. If there is, send a non-200 code back to the load balancer
-health probe.
+event for yourself. If there is, send a non-200 HTTP code back to the load 
+balancer health probe.
 - The load balancer health probes will see an unhealthy response coming from
 the application. After the configured number of consequentive failures, it
 will mark the (VM) instance as unhealthy and stop forwarding traffic to it.
@@ -66,9 +69,6 @@ will mark the (VM) instance as unhealthy and stop forwarding traffic to it.
 unhealthy responses and approve the Terminate event (if required) after a
 safe period (safe period = load balancer configuration for `n` retries
 at `m` second intervals).  
-
-The [main.bicep](./automation/main.bicep) has a `terminateNotificationProfile`
-for the blue/green VMSS. 
 
 ## Contributing
 
