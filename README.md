@@ -21,13 +21,14 @@ pieces:
 - [deploy-application.yml](./.github/workflows/deploy-application.yml) has the
 workflow to perform the blue/green deployment. There are a few pre-requisites
 before running this workflow. The workflow defines 3 environment variables:
-```
-RESOURCE_GROUP_NAME: <value> (e.g. my-resource-group)
-RELEASE_FOLDER_NAME: <value> (e.g. 1.234)
-BLOB_CONTAINER_NAME: <value> (e.g. appcontainer)
-```
-The storage account created should have a blob container with above
-name and containing two artifacts uploaded to it:
+    ```
+    RESOURCE_GROUP_NAME: <value> (e.g. my-resource-group)
+    RELEASE_FOLDER_NAME: <value> (e.g. 1.234)
+    BLOB_CONTAINER_NAME: <value> (e.g. appcontainer)
+    ```
+
+The storage account created by Bicep should have a blob container with above
+`BLOB_CONTAINER_NAME` and containing two artifacts uploaded to it:
   - [install.ps1](./automation/install.ps1) contains the installation script
   for installing the workload on the VMSS.
   - [azcopy.exe](./automation/azcopy.exe) the azcopy binary that pulls
@@ -35,9 +36,9 @@ name and containing two artifacts uploaded to it:
   repo example, simply take the artifact generated from 
   [code-build.yml](./.github/workflows/code-build.yml), unzip it and upload 
   it's contents to the `RELEASE_FOLDER_NAME`.
-  - The workflow relies on [Deploy-Application.ps1](./automation/Deploy-Application.ps1)
-    to do the heavy lifting. Comments in this file should explain the
-    blue/green deployment model with two VMSS.
+
+The workflow relies on [Deploy-Application.ps1](./automation/Deploy-Application.ps1)
+to do the heavy lifting. Comments in this file should explain the blue/green deployment model with two VMSS.
 
 ## Contributing
 
