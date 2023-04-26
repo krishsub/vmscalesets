@@ -1,7 +1,22 @@
 # Project
 
 This repo is an example of a blue/green deployment on VMSS with zero 
-downtime from a workload usage perspective.
+downtime from a workload usage perspective. 
+
+In a blue/green deployment you create two separate but identical 
+environments. One environment (say blue) is running the current application
+version. You spin up a new identical environment (green in this case) 
+where the new application version is deployed. Once the new version is 
+validated, it can handleall user traffic and the old version and its 
+environment can be deleted. This strategy is repeated for the next 
+deployment.
+
+This example illustrates how a blue/green deployment strategy is
+implemented for an application deployed on Azure Virtual Machine 
+Scale Sets (VMSS). From a user perspective, all calls are handled
+gracefully with draining of connections so that the blue/green
+deployment results in zero downtime - i.e. not a single request is
+lost.
 
 There are a few pieces to understand from a top-level perspective:
 
