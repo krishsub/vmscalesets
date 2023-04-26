@@ -1,7 +1,7 @@
 # Project
 
-> This repo is an example of a blue/green deployment on VMSS with zero 
-> downtime from a workload usage perspective.
+This repo is an example of a blue/green deployment on VMSS with zero 
+downtime from a workload usage perspective.
 
 There are a few pieces to understand from a top-level perspective:
 
